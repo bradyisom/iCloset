@@ -1,6 +1,6 @@
-angular.module('starter.controllers', [])
+angular.module('starter.controllers', ['starter.services'])
 
-.controller('AppCtrl', function($scope, $ionicModal, $timeout) {
+.controller('AppCtrl', function($scope, $ionicModal, $timeout, Authentication) {
   // Form data for the login modal
   $scope.loginData = {};
 
@@ -19,6 +19,16 @@ angular.module('starter.controllers', [])
   // Open the login modal
   $scope.login = function() {
     $scope.modal.show();
+  };
+
+  $scope.signedInGoogle = function(authResult) {
+    // console.log('Google+ signin', authResult);
+    if (authResult['status']['signed_in']) {
+      Authentication.googleSignIn(authResult);
+      Authentication.getCredentials().then(function(credentials) {
+        console.log('got credentials', credentials);
+      });
+    }
   };
 
   // Perform the login action when the user submits the login form

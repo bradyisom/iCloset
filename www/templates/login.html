@@ -11,8 +11,12 @@
         <div class="oauth-signin">
           <div google-signin 
               client-id='57043893067-1j9b63ap9ljggsd3m5nvhbe5n0bm180n.apps.googleusercontent.com' 
-              after-signin="signedIn(oauth)">
+              after-signin="signedInGoogle(oauth)">
           </div>
+          <div facebook-signin>
+          </div>
+          <fb:login-button background="dark" onlogin="facebook_onlogin_ready();">
+          </fb:login-button>
         </div>
         <label class="item item-input">
           <span class="input-label">Username</span>
