@@ -8,6 +8,12 @@
   <ion-content>
     <form ng-submit="doLogin()">
       <div class="list">
+        <div class="oauth-signin">
+          <div google-signin 
+              client-id='57043893067-1j9b63ap9ljggsd3m5nvhbe5n0bm180n.apps.googleusercontent.com' 
+              after-signin="signedIn(oauth)">
+          </div>
+        </div>
         <label class="item item-input">
           <span class="input-label">Username</span>
           <input type="text" ng-model="loginData.username">

@@ -4,7 +4,7 @@
 // 'starter' is the name of this angular module example (also set in a <body> attribute in index.html)
 // the 2nd parameter is an array of 'requires'
 // 'starter.controllers' is found in controllers.js
-angular.module('starter', ['ionic', 'starter.controllers'])
+angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives'])
 
 .run(function($ionicPlatform) {
   $ionicPlatform.ready(function() {
@@ -18,6 +18,10 @@ angular.module('starter', ['ionic', 'starter.controllers'])
       StatusBar.styleDefault();
     }
   });
+
+  AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+      IdentityPoolId: 'us-east-1:d0692cb3-b12a-44bf-afb1-91c0e44dee9a',
+  });  
 })
 
 .config(function($stateProvider, $urlRouterProvider) {
@@ -69,3 +73,14 @@ angular.module('starter', ['ionic', 'starter.controllers'])
   // if none of the above states are matched, use this as the fallback
   $urlRouterProvider.otherwise('/app/playlists');
 });
+
+window.onLoadCallback = function() {
+  // When the document is ready
+  angular.element(document).ready(function() {
+    // Bootstrap the oauth2 library
+    gapi.client.load('oauth2', 'v2', function() {
+      // Finally, bootstrap our angular app
+      angular.bootstrap(document, ['starter']);
+    });
+  });
+}
