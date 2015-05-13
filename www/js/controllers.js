@@ -1,6 +1,6 @@
 angular.module('starter.controllers', ['starter.services'])
 
-.controller('AppCtrl', function($scope, $ionicModal, $timeout, Authentication) {
+.controller('AppCtrl', function($scope, $ionicModal, $timeout, Authentication, AWSService) {
   // Form data for the login modal
   $scope.loginData = {};
 
@@ -24,8 +24,9 @@ angular.module('starter.controllers', ['starter.services'])
   $scope.signedInGoogle = function(authResult) {
     // console.log('Google+ signin', authResult);
     if (authResult['status']['signed_in']) {
-      Authentication.googleSignIn(authResult);
-      Authentication.getCredentials().then(function(credentials) {
+      Authentication.googleSignIn(authResult).then(function() {
+        return AWSService.getCredentials();
+      }).then(function(credentials) {
         console.log('got credentials', credentials);
       });
     }
