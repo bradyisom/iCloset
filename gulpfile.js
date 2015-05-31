@@ -3,18 +3,21 @@ var gutil = require('gulp-util');
 var bower = require('bower');
 var concat = require('gulp-concat');
 var sass = require('gulp-sass');
+var coffee = require('gulp-coffee');
 var minifyCss = require('gulp-minify-css');
+var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var sh = require('shelljs');
 
 var paths = {
-  sass: ['./scss/**/*.scss']
+  sass: ['./scss/**/*.scss'],
+  coffee: ['./coffee/**/*.coffee']
 };
 
 gulp.task('default', ['sass']);
 
 gulp.task('sass', function(done) {
-  gulp.src('./scss/ionic.app.scss')
+  gulp.src(paths.sass)
     .pipe(sass({
       errLogToConsole: true
     }))
@@ -27,8 +30,19 @@ gulp.task('sass', function(done) {
     .on('end', done);
 });
 
+gulp.task('coffee', function(done) {
+  gulp.src(paths.coffee)
+    .pipe(coffee())
+    .pipe(gulp.dest('./www/js/'))
+    // .pipe(uglify())
+    // .pipe(rename({ extname: '.min.js' }))
+    // .pipe(gulp.dest('./www/js/'))
+    .on('end', done);
+});
+
 gulp.task('watch', function() {
   gulp.watch(paths.sass, ['sass']);
+  gulp.watch(paths.coffee, ['coffee']);
 });
 
 gulp.task('install', ['git-check'], function() {

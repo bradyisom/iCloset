@@ -1,0 +1,134 @@
+angular.module('starter.services', [])
+.service 'LocalStorage', class LocalStorage
+    constructor: ->
+        @isEnabled = typeof(localStorage) != 'undefined'
+
+    get: (name, defaultValue)->
+        value = defaultValue
+        if(@isEnabled)
+            item = localStorage.getItem(name)
+            if item?.length
+                value = JSON.parse(item)
+            else
+                value = defaultValue
+        value
+
+    remove: (name)->
+        if(@isEnabled)
+            localStorage.removeItem(name)
+
+    set: (name, value)->
+        if(@isEnabled)
+            localStorage.setItem(name, JSON.stringify(value))
+        value
+.service 'AWSService', ['$q', '$cacheFactory', 'LocalStorage', class AWSService
+    constructor: (@$q, @$$cacheFactory, @LocalStorage)->
+        @dynamoCache = @$$cacheFactory('dynamo')
+
+    getCredentials: ->
+        defer = @$q.defer()
+        # Obtain AWS credentials
+        AWS.config.credentials.get (err)->
+            if(err)
+                defer.reject(err)
+                console.log('error logging into Cognito', err)
+            else
+                @LocalStorage.set('identityId', AWS.config.credentials.identityId)
+                defer.resolve(AWS.config.credentials)
+                # console.log('logged into Cognito', AWS.config.credentials);
+        defer.promise
+
+    dynamo: (params)->
+        d = @$q.defer()
+        angular.extend(params,
+            endpoint: new AWS.Endpoint('http://localhost:8000')
+        )
+        @getCredentials().then =>
+            table = @dynamoCache.get(JSON.stringify(params))
+            if (!table)
+                table = new AWS.DynamoDB(params)
+                @dynamoCache.put(JSON.stringify(params), table)
+            d.resolve(table)
+        d.promise
+]
+.service 'UserService', ['$rootScope', '$q', '$http', 'AWSService', class UserService
+    constructor: (@$rootScope, @$q, @$http, @AWSService)->
+        @user = null
+        @UsersTable = 'Users'
+
+    setCurrentUser: (u) ->
+        if (u && !u.error)
+            @user = u
+            @currentUser()
+        else
+            d = @$q.defer()
+            d.reject(u.error)
+            return d.promise
+
+    currentUser: ->
+        d = @$q.defer()
+
+        @AWSService.dynamo(
+          params: {TableName: @UsersTable}
+        ).then (table) =>
+            # find the user by email
+            table.getItem(
+                Key: {'User email': {S: @user.email}}
+            , (err, data) =>
+                if (Object.keys(data).length == 0)
+                    # User didn't previously exist
+                    # so create an entry
+                    itemParams = 
+                        Item:
+                            'User email': {S: @user.email}
+                            data: { S: JSON.stringify(@user) }
+                    table.putItem itemParams, 
+                        (err, data) ->
+                            d.resolve(e)
+                else
+                    # The user already exists
+                    @user = JSON.parse(data.Item.data.S)
+                    d.resolve(@user)
+            )
+
+        d.promise.then (u)=>
+            @$rootScope.user = u
+
+        # d.resolve(@user)
+        return d.promise
+]
+.service 'Authentication', ['LocalStorage', '$q', 'UserService', class Authentication
+    constructor: (@LocalStorage, @$q, @UserService)->
+        @poolId = ''
+
+    init: (poolId)->
+        AWS.config.region = 'us-east-1'
+        @poolId = poolId
+
+        AWS.config.credentials = new AWS.CognitoIdentityCredentials(
+            AccountId: '135172764304'
+            IdentityPoolId: @poolId
+        )
+
+        existingId = @LocalStorage.get('identityId')
+        if(existingId)
+            AWS.config.credentials.identityId = existingId
+
+    googleSignIn: (authResult)->
+        defer = @$q.defer()
+        # console.log('googleSignIn', authResult);
+        # Add the Google access token to the Cognito credentials login map.
+        gapi.client.oauth2.userinfo.get().execute (e)=>
+            email = e.email
+            console.log('Google Email', email)
+            AWS.config.credentials = new AWS.CognitoIdentityCredentials(
+                AccountId: '135172764304'
+                IdentityPoolId: @poolId
+                WebIdentityToken: e.id_token
+                Logins:
+                   'accounts.google.com': authResult['id_token']
+            )
+            @UserService.setCurrentUser(e)
+            defer.resolve()
+        defer.promise
+]

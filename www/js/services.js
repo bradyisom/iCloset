@@ -1,161 +1,208 @@
-angular.module('starter.services', [])
-.service('LocalStorage', function() {
-    var isEnabled = typeof(localStorage) != 'undefined';
+(function() {
+  var AWSService, Authentication, LocalStorage, UserService;
 
-    this.get = function(name, defaultValue) {
-        var value = defaultValue;
-        if(isEnabled) {
-            var item = localStorage.getItem(name);
-            if(item && item.length) {
-                value = JSON.parse(item);
-            }
-            else {
-                value = defaultValue;
-            }
-        }
-        return value;
-    };
+  angular.module('starter.services', []).service('LocalStorage', LocalStorage = (function() {
+    function LocalStorage() {
+      this.isEnabled = typeof localStorage !== 'undefined';
+    }
 
-    this.remove = function(name) {
-    	if(isEnabled) {
-    		localStorage.removeItem(name);
-    	}
-    };
-
-    this.set = function(name, value) {
-    	if(isEnabled) {
-    		localStorage.setItem(name, JSON.stringify(value));
-    	}
-    	return value;
-    };
-
-})
-.service('UserService', function($rootScope, $q, $http, AWSService) {
-    var _user = null,
-    	t = this,
-    	UsersTable = 'Users';
-    this.setCurrentUser = function(u) {
-        if (u && !u.error) {
-            _user = u;
-            return t.currentUser();
+    LocalStorage.prototype.get = function(name, defaultValue) {
+      var item, value;
+      value = defaultValue;
+      if (this.isEnabled) {
+        item = localStorage.getItem(name);
+        if (item != null ? item.length : void 0) {
+          value = JSON.parse(item);
         } else {
-            var d = $q.defer();
-            d.reject(u.error);
-            return d.promise;
+          value = defaultValue;
         }
+      }
+      return value;
     };
-    this.currentUser = function() {
-        var d = $q.defer();
 
-		AWSService.dynamo({
-              params: {TableName: UsersTable}
-            })
-            .then(function(table) {
-                // find the user by email
-                table.getItem({
-                    Key: {'User email': {S: _user.email}}
-                }, function(err, data) {
-                    if (Object.keys(data).length == 0) {
-                        // User didn't previously exist
-                        // so create an entry
-                        var itemParams = {
-                            Item: {
-                                'User email': {S: _user.email}, 
-                                data: { S: JSON.stringify(_user) }
-                            }
-                        };
-                        table.putItem(itemParams, 
-                            function(err, data) {
-                                d.resolve(e);
-                        });
-                    } else {
-                        // The user already exists
-                        _user = JSON.parse(data.Item.data.S);
-                        d.resolve(_user);
-                    }
-                });
-            });
+    LocalStorage.prototype.remove = function(name) {
+      if (this.isEnabled) {
+        return localStorage.removeItem(name);
+      }
+    };
 
-		d.promise.then(function(u) {
-			$rootScope.user = u;
-		});
+    LocalStorage.prototype.set = function(name, value) {
+      if (this.isEnabled) {
+        localStorage.setItem(name, JSON.stringify(value));
+      }
+      return value;
+    };
 
-        // d.resolve(_user);
+    return LocalStorage;
+
+  })()).service('AWSService', [
+    '$q', '$cacheFactory', 'LocalStorage', AWSService = (function() {
+      function AWSService($q, $$cacheFactory, LocalStorage1) {
+        this.$q = $q;
+        this.$$cacheFactory = $$cacheFactory;
+        this.LocalStorage = LocalStorage1;
+        this.dynamoCache = this.$$cacheFactory('dynamo');
+      }
+
+      AWSService.prototype.getCredentials = function() {
+        var defer;
+        defer = this.$q.defer();
+        AWS.config.credentials.get(function(err) {
+          if (err) {
+            defer.reject(err);
+            return console.log('error logging into Cognito', err);
+          } else {
+            this.LocalStorage.set('identityId', AWS.config.credentials.identityId);
+            return defer.resolve(AWS.config.credentials);
+          }
+        });
+        return defer.promise;
+      };
+
+      AWSService.prototype.dynamo = function(params) {
+        var d;
+        d = this.$q.defer();
+        angular.extend(params, {
+          endpoint: new AWS.Endpoint('http://localhost:8000')
+        });
+        this.getCredentials().then((function(_this) {
+          return function() {
+            var table;
+            table = _this.dynamoCache.get(JSON.stringify(params));
+            if (!table) {
+              table = new AWS.DynamoDB(params);
+              _this.dynamoCache.put(JSON.stringify(params), table);
+            }
+            return d.resolve(table);
+          };
+        })(this));
         return d.promise;
-    };
-})
-.service('Authentication', function(LocalStorage, $q, UserService) {
-	var _poolId = '';
-	this.init = function(poolId) {
-		AWS.config.region = 'us-east-1';
-		_poolId = poolId;
+      };
 
+      return AWSService;
+
+    })()
+  ]).service('UserService', [
+    '$rootScope', '$q', '$http', 'AWSService', UserService = (function() {
+      function UserService($rootScope, $q, $http, AWSService1) {
+        this.$rootScope = $rootScope;
+        this.$q = $q;
+        this.$http = $http;
+        this.AWSService = AWSService1;
+        this.user = null;
+        this.UsersTable = 'Users';
+      }
+
+      UserService.prototype.setCurrentUser = function(u) {
+        var d;
+        if (u && !u.error) {
+          this.user = u;
+          return this.currentUser();
+        } else {
+          d = this.$q.defer();
+          d.reject(u.error);
+          return d.promise;
+        }
+      };
+
+      UserService.prototype.currentUser = function() {
+        var d;
+        d = this.$q.defer();
+        this.AWSService.dynamo({
+          params: {
+            TableName: this.UsersTable
+          }
+        }).then((function(_this) {
+          return function(table) {
+            return table.getItem({
+              Key: {
+                'User email': {
+                  S: _this.user.email
+                }
+              }
+            }, function(err, data) {
+              var itemParams;
+              if (Object.keys(data).length === 0) {
+                itemParams = {
+                  Item: {
+                    'User email': {
+                      S: _this.user.email
+                    },
+                    data: {
+                      S: JSON.stringify(_this.user)
+                    }
+                  }
+                };
+                return table.putItem(itemParams, function(err, data) {
+                  return d.resolve(e);
+                });
+              } else {
+                _this.user = JSON.parse(data.Item.data.S);
+                return d.resolve(_this.user);
+              }
+            });
+          };
+        })(this));
+        d.promise.then((function(_this) {
+          return function(u) {
+            return _this.$rootScope.user = u;
+          };
+        })(this));
+        return d.promise;
+      };
+
+      return UserService;
+
+    })()
+  ]).service('Authentication', [
+    'LocalStorage', '$q', 'UserService', Authentication = (function() {
+      function Authentication(LocalStorage1, $q, UserService1) {
+        this.LocalStorage = LocalStorage1;
+        this.$q = $q;
+        this.UserService = UserService1;
+        this.poolId = '';
+      }
+
+      Authentication.prototype.init = function(poolId) {
+        var existingId;
+        AWS.config.region = 'us-east-1';
+        this.poolId = poolId;
         AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-			AccountId: '135172764304',
-            IdentityPoolId: _poolId
+          AccountId: '135172764304',
+          IdentityPoolId: this.poolId
         });
+        existingId = this.LocalStorage.get('identityId');
+        if (existingId) {
+          return AWS.config.credentials.identityId = existingId;
+        }
+      };
 
-		var existingId = LocalStorage.get('identityId');
-		if(existingId) {
-			AWS.config.credentials.identityId = existingId;
-		}
-	};
-
-	this.googleSignIn = function(authResult) {
-		var defer = $q.defer();
-		// console.log('googleSignIn', authResult);
-        // Add the Google access token to the Cognito credentials login map.
-		gapi.client.oauth2.userinfo.get().execute(function(e) {
-            var email = e.email;
+      Authentication.prototype.googleSignIn = function(authResult) {
+        var defer;
+        defer = this.$q.defer();
+        gapi.client.oauth2.userinfo.get().execute((function(_this) {
+          return function(e) {
+            var email;
+            email = e.email;
             console.log('Google Email', email);
-	        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-				AccountId: '135172764304',
-	            IdentityPoolId: _poolId,
-				WebIdentityToken: e.id_token,
-	            Logins: {
-	               'accounts.google.com': authResult['id_token']
-	            }
-	        });
-            UserService.setCurrentUser(e);
-            defer.resolve()
-        });
+            AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+              AccountId: '135172764304',
+              IdentityPoolId: _this.poolId,
+              WebIdentityToken: e.id_token,
+              Logins: {
+                'accounts.google.com': authResult['id_token']
+              }
+            });
+            _this.UserService.setCurrentUser(e);
+            return defer.resolve();
+          };
+        })(this));
         return defer.promise;
-	};
-})
-.service('AWSService', function($q, $cacheFactory, LocalStorage) {
-	var t = this,
-		dynamoCache = $cacheFactory('dynamo');
+      };
 
-	this.getCredentials = function() {
- 		var defer = $q.defer();
-        // Obtain AWS credentials
-        AWS.config.credentials.get(function(err){
-        	if(err) {
-        		defer.reject(err);
-	            console.log('error logging into Cognito', err);
-        	}
-        	else {
-        		LocalStorage.set('identityId', AWS.config.credentials.identityId);
-        		defer.resolve(AWS.config.credentials);
-	            // console.log('logged into Cognito', AWS.config.credentials);
-        	}
-        });
-        return defer.promise;
-	};
-	this.dynamo = function(params) {
-	    var d = $q.defer();
-	    angular.extend(params, {
-			endpoint: new AWS.Endpoint('http://localhost:8000')
-	    });
-	    t.getCredentials().then(function() {
-	    	var table = dynamoCache.get(JSON.stringify(params));
-	    	if (!table) {
-		        table = new AWS.DynamoDB(params);
-		        dynamoCache.put(JSON.stringify(params), table);
-	    	}
-	        d.resolve(table);
-	    });
-	    return d.promise;
-	};
-})
-;
+      return Authentication;
+
+    })()
+  ]);
+
+}).call(this);
