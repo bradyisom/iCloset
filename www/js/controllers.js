@@ -1,10 +1,32 @@
 (function() {
-  angular.module('starter.controllers', ['starter.services']).controller('AppCtrl', function($scope, $ionicModal, $timeout, Authentication, AWSService) {
+  angular.module('starter.controllers', ['starter.services']).controller('AppCtrl', function($scope, $ionicModal, $timeout, Authentication, AWSService, Auth) {
     $scope.loginData = {};
+    $scope.googleLogin = function(googleAuthData) {
+      return Auth.$authWithOAuthToken("google", googleAuthData.access_token).then(function(authData) {
+        return authData.google.id_token = googleAuthData.id_token;
+      })["catch"](function(error) {
+        return console.log('login error', error);
+      });
+    };
+    $scope.socialLogin = function(provider) {
+      var oauthScope;
+      oauthScope = 'email';
+      return Auth.$authWithOAuthPopup(provider, {
+        scope: oauthScope
+      })["catch"](function(error) {
+        return console.log('login error', error);
+      });
+    };
+    $scope.logout = function() {
+      if (auth2.isSignedIn.get()) {
+        auth2.signOut();
+      }
+      return Auth.$unauth();
+    };
     $scope.closeLogin = function() {
       return $scope.modal.hide();
     };
-    $scope.login = function() {
+    return $scope.login = function() {
       if (!$scope.modal) {
         return $ionicModal.fromTemplateUrl('templates/login.html', {
           scope: $scope
@@ -15,21 +37,6 @@
       } else {
         return $scope.modal.show();
       }
-    };
-    $scope.signedInGoogle = function(authResult) {
-      if (authResult['status']['signed_in']) {
-        return Authentication.googleSignIn(authResult).then(function() {
-          return AWSService.getCredentials();
-        }).then(function(credentials) {
-          return console.log('got credentials', credentials);
-        });
-      }
-    };
-    return $scope.doLogin = function() {
-      console.log('Doing login', $scope.loginData);
-      return $timeout(function() {
-        return $scope.closeLogin();
-      }, 1000);
     };
   }).controller('PlaylistsCtrl', function($scope) {
     return $scope.playlists = [

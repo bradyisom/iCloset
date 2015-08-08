@@ -6,7 +6,7 @@
 # 'starter.controllers' is found in controllers.js
 angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives', 'starter.services'])
 
-.run ($ionicPlatform, Authentication) ->
+.run ($ionicPlatform, Authentication, AWSService, Auth, $rootScope) ->
   $ionicPlatform.ready ->
     # Hide the accessory bar by default (remove this to show the accessory bar above the keyboard
     # for form inputs)
@@ -17,6 +17,17 @@ angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives',
       StatusBar.styleDefault()
 
   Authentication.init('us-east-1:d0692cb3-b12a-44bf-afb1-91c0e44dee9a')
+
+  Auth.$onAuth (authData)->
+    $rootScope.authData = authData
+
+    if authData
+      console.log 'Firebase credentials', authData
+
+      Authentication.socialSignIn(authData).then(->
+          AWSService.getCredentials()
+      )
+
 
 .config ($stateProvider, $urlRouterProvider) ->
   $stateProvider
@@ -58,9 +69,14 @@ angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives',
 
 
 window.onLoadCallback = ->
+  # console.log 'onLoadCallback'
   # When the document is ready
   angular.element(document).ready ->
     # Bootstrap the oauth2 library
-    gapi.client.load 'oauth2', 'v2', ->
+    gapi.load 'auth2', ->
+      window.auth2 = gapi.auth2.init(
+        client_id: '57043893067-1j9b63ap9ljggsd3m5nvhbe5n0bm180n.apps.googleusercontent.com'
+        scope: 'email profile openid'
+      )
       # Finally, bootstrap our angular app
       angular.bootstrap document, ['starter']

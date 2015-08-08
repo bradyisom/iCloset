@@ -1,9 +1,34 @@
 angular.module('starter.controllers', ['starter.services'])
 
-.controller 'AppCtrl', ($scope, $ionicModal, $timeout, Authentication, AWSService) ->
+.controller 'AppCtrl', ($scope, $ionicModal, $timeout, Authentication, AWSService, Auth) ->
   # Form data for the login modal
   $scope.loginData = {}
 
+  $scope.googleLogin = (googleAuthData)->
+      # console.log 'googleLogin', googleAuthData
+      Auth.$authWithOAuthToken(
+        "google", googleAuthData.access_token
+      ).then (authData)->
+          authData.google.id_token = googleAuthData.id_token
+          # console.log 'after auth', authData
+      .catch (error)->
+          console.log 'login error', error
+
+  $scope.socialLogin = (provider)->
+      # console.log 'login', provider
+      oauthScope = 'email'
+      Auth.$authWithOAuthPopup(provider,
+          scope: oauthScope
+      # ).then (authData)->
+      #     console.log 'after auth', authData
+      ).catch (error)->
+          console.log 'login error', error
+
+  $scope.logout = ->
+      # console.log 'logout'
+      if auth2.isSignedIn.get()
+          auth2.signOut()
+      Auth.$unauth()
 
   # Triggered in the login modal to close it
   $scope.closeLogin = ->
@@ -21,23 +46,6 @@ angular.module('starter.controllers', ['starter.services'])
     else
       $scope.modal.show()
 
-  $scope.signedInGoogle = (authResult) ->
-    # console.log('Google+ signin', authResult);
-    if (authResult['status']['signed_in'])
-      Authentication.googleSignIn(authResult).then(->
-        AWSService.getCredentials()
-      ).then (credentials)->
-        console.log('got credentials', credentials)
-
-  # Perform the login action when the user submits the login form
-  $scope.doLogin = ->
-    console.log('Doing login', $scope.loginData)
-
-    # Simulate a login delay. Remove this and replace with your login
-    # code if using a login system
-    $timeout ->
-      $scope.closeLogin()
-    , 1000
 
 .controller 'PlaylistsCtrl', ($scope)->
   $scope.playlists = [

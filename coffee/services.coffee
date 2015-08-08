@@ -1,4 +1,4 @@
-angular.module('starter.services', [])
+angular.module('starter.services', ['firebase'])
 .service 'LocalStorage', class LocalStorage
     constructor: ->
         @isEnabled = typeof(localStorage) != 'undefined'
@@ -28,14 +28,15 @@ angular.module('starter.services', [])
     getCredentials: ->
         defer = @$q.defer()
         # Obtain AWS credentials
+        # console.log 'getting AWS credentials'
         AWS.config.credentials.get (err)->
             if(err)
                 defer.reject(err)
                 console.log('error logging into Cognito', err)
             else
+                console.log('AWS credentials', AWS.config.credentials);
                 @LocalStorage.set('identityId', AWS.config.credentials.identityId)
                 defer.resolve(AWS.config.credentials)
-                # console.log('logged into Cognito', AWS.config.credentials);
         defer.promise
 
     dynamo: (params)->
@@ -97,9 +98,15 @@ angular.module('starter.services', [])
         # d.resolve(@user)
         return d.promise
 ]
-.service 'Authentication', ['LocalStorage', '$q', 'UserService', class Authentication
-    constructor: (@LocalStorage, @$q, @UserService)->
+.factory "Auth", ['$firebaseAuth', ($firebaseAuth) ->
+    usersRef = new Firebase("https://icloset.firebaseio.com")
+    $firebaseAuth(usersRef)
+]
+.service 'Authentication', ['LocalStorage', 'Auth', '$q', 'UserService', class Authentication
+    constructor: (@LocalStorage, @Auth, @$q, @UserService)->
         @poolId = ''
+        @googleIdToken = ''
+        auth2.isSignedIn.listen(@googleSignedIn)
 
     init: (poolId)->
         AWS.config.region = 'us-east-1'
@@ -114,21 +121,43 @@ angular.module('starter.services', [])
         if(existingId)
             AWS.config.credentials.identityId = existingId
 
-    googleSignIn: (authResult)->
+    googleSignedIn: (signedIn)=>
+        # console.log 'Authentication.googleSignedIn', signedIn
+        if signedIn
+            googleAuth = auth2.currentUser.get().getAuthResponse()
+            @Auth.$authWithOAuthToken(
+                "google", googleAuth.access_token
+            # ).then (authData)->
+            #     console.log 'after auth', authData
+            ).catch (error)->
+                console.log 'login error', error
+
+    socialSignIn: (authResult)->
         defer = @$q.defer()
-        # console.log('googleSignIn', authResult);
-        # Add the Google access token to the Cognito credentials login map.
-        gapi.client.oauth2.userinfo.get().execute (e)=>
-            email = e.email
-            console.log('Google Email', email)
-            AWS.config.credentials = new AWS.CognitoIdentityCredentials(
-                AccountId: '135172764304'
-                IdentityPoolId: @poolId
-                WebIdentityToken: e.id_token
-                Logins:
-                   'accounts.google.com': authResult['id_token']
-            )
-            @UserService.setCurrentUser(e)
-            defer.resolve()
+        logins = {}
+
+        if authResult.provider == 'google' and
+                not auth2.isSignedIn.get()
+            @Auth.$unauth()
+            defer.reject() 
+            return defer.promise
+
+        switch authResult.provider
+            when 'google'
+                googleAuth = auth2.currentUser.get().getAuthResponse()
+                logins['accounts.google.com'] = googleAuth.id_token
+            when 'facebook'
+                logins['graph.facebook.com'] = authResult.facebook.accessToken
+            when 'twitter'
+                logins['api.twitter.com'] = authResult.twitter.accessToken + ';' + authResult.twitter.accessTokenSecret
+
+
+        AWS.config.credentials = new AWS.CognitoIdentityCredentials(
+            AccountId: '135172764304'
+            IdentityPoolId: @poolId
+            Logins: logins
+        )
+        defer.resolve()
         defer.promise
+
 ]

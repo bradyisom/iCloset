@@ -1,7 +1,8 @@
 (function() {
-  var AWSService, Authentication, LocalStorage, UserService;
+  var AWSService, Authentication, LocalStorage, UserService,
+    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-  angular.module('starter.services', []).service('LocalStorage', LocalStorage = (function() {
+  angular.module('starter.services', ['firebase']).service('LocalStorage', LocalStorage = (function() {
     function LocalStorage() {
       this.isEnabled = typeof localStorage !== 'undefined';
     }
@@ -52,6 +53,7 @@
             defer.reject(err);
             return console.log('error logging into Cognito', err);
           } else {
+            console.log('AWS credentials', AWS.config.credentials);
             this.LocalStorage.set('identityId', AWS.config.credentials.identityId);
             return defer.resolve(AWS.config.credentials);
           }
@@ -154,13 +156,23 @@
       return UserService;
 
     })()
+  ]).factory("Auth", [
+    '$firebaseAuth', function($firebaseAuth) {
+      var usersRef;
+      usersRef = new Firebase("https://icloset.firebaseio.com");
+      return $firebaseAuth(usersRef);
+    }
   ]).service('Authentication', [
-    'LocalStorage', '$q', 'UserService', Authentication = (function() {
-      function Authentication(LocalStorage1, $q, UserService1) {
+    'LocalStorage', 'Auth', '$q', 'UserService', Authentication = (function() {
+      function Authentication(LocalStorage1, Auth, $q, UserService1) {
         this.LocalStorage = LocalStorage1;
+        this.Auth = Auth;
         this.$q = $q;
         this.UserService = UserService1;
+        this.googleSignedIn = bind(this.googleSignedIn, this);
         this.poolId = '';
+        this.googleIdToken = '';
+        auth2.isSignedIn.listen(this.googleSignedIn);
       }
 
       Authentication.prototype.init = function(poolId) {
@@ -177,26 +189,42 @@
         }
       };
 
-      Authentication.prototype.googleSignIn = function(authResult) {
-        var defer;
+      Authentication.prototype.googleSignedIn = function(signedIn) {
+        var googleAuth;
+        if (signedIn) {
+          googleAuth = auth2.currentUser.get().getAuthResponse();
+          return this.Auth.$authWithOAuthToken("google", googleAuth.access_token)["catch"](function(error) {
+            return console.log('login error', error);
+          });
+        }
+      };
+
+      Authentication.prototype.socialSignIn = function(authResult) {
+        var defer, googleAuth, logins;
         defer = this.$q.defer();
-        gapi.client.oauth2.userinfo.get().execute((function(_this) {
-          return function(e) {
-            var email;
-            email = e.email;
-            console.log('Google Email', email);
-            AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-              AccountId: '135172764304',
-              IdentityPoolId: _this.poolId,
-              WebIdentityToken: e.id_token,
-              Logins: {
-                'accounts.google.com': authResult['id_token']
-              }
-            });
-            _this.UserService.setCurrentUser(e);
-            return defer.resolve();
-          };
-        })(this));
+        logins = {};
+        if (authResult.provider === 'google' && !auth2.isSignedIn.get()) {
+          this.Auth.$unauth();
+          defer.reject();
+          return defer.promise;
+        }
+        switch (authResult.provider) {
+          case 'google':
+            googleAuth = auth2.currentUser.get().getAuthResponse();
+            logins['accounts.google.com'] = googleAuth.id_token;
+            break;
+          case 'facebook':
+            logins['graph.facebook.com'] = authResult.facebook.accessToken;
+            break;
+          case 'twitter':
+            logins['api.twitter.com'] = authResult.twitter.accessToken + ';' + authResult.twitter.accessTokenSecret;
+        }
+        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+          AccountId: '135172764304',
+          IdentityPoolId: this.poolId,
+          Logins: logins
+        });
+        defer.resolve();
         return defer.promise;
       };
 

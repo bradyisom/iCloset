@@ -7674,9 +7674,3 @@ a.button {
   opacity: 0;
   -webkit-transition-duration: 0s;
   transition-duration: 0s; }
-
-.oauth-signin {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px; }

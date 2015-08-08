@@ -1,5 +1,5 @@
 (function() {
-  angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives', 'starter.services']).run(function($ionicPlatform, Authentication) {
+  angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives', 'starter.services']).run(function($ionicPlatform, Authentication, AWSService, Auth, $rootScope) {
     $ionicPlatform.ready(function() {
       if (window.cordova && window.cordova.plugins.Keyboard) {
         cordova.plugins.Keyboard.hideKeyboardAccessoryBar(true);
@@ -8,7 +8,16 @@
         return StatusBar.styleDefault();
       }
     });
-    return Authentication.init('us-east-1:d0692cb3-b12a-44bf-afb1-91c0e44dee9a');
+    Authentication.init('us-east-1:d0692cb3-b12a-44bf-afb1-91c0e44dee9a');
+    return Auth.$onAuth(function(authData) {
+      $rootScope.authData = authData;
+      if (authData) {
+        console.log('Firebase credentials', authData);
+        return Authentication.socialSignIn(authData).then(function() {
+          return AWSService.getCredentials();
+        });
+      }
+    });
   }).config(function($stateProvider, $urlRouterProvider) {
     $stateProvider.state('app', {
       url: "/app",
@@ -51,7 +60,11 @@
 
   window.onLoadCallback = function() {
     return angular.element(document).ready(function() {
-      return gapi.client.load('oauth2', 'v2', function() {
+      return gapi.load('auth2', function() {
+        window.auth2 = gapi.auth2.init({
+          client_id: '57043893067-1j9b63ap9ljggsd3m5nvhbe5n0bm180n.apps.googleusercontent.com',
+          scope: 'email profile openid'
+        });
         return angular.bootstrap(document, ['starter']);
       });
     });
