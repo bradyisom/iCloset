@@ -18,9 +18,6 @@
       });
     };
     $scope.logout = function() {
-      if (auth2.isSignedIn.get()) {
-        auth2.signOut();
-      }
       return Auth.$unauth();
     };
     $scope.closeLogin = function() {

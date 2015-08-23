@@ -26,8 +26,6 @@ angular.module('starter.controllers', ['starter.services'])
 
   $scope.logout = ->
       # console.log 'logout'
-      if auth2.isSignedIn.get()
-          auth2.signOut()
       Auth.$unauth()
 
   # Triggered in the login modal to close it

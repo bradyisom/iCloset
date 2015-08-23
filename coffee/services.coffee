@@ -102,11 +102,10 @@ angular.module('starter.services', ['firebase'])
     usersRef = new Firebase("https://icloset.firebaseio.com")
     $firebaseAuth(usersRef)
 ]
-.service 'Authentication', ['LocalStorage', 'Auth', '$q', 'UserService', class Authentication
-    constructor: (@LocalStorage, @Auth, @$q, @UserService)->
+.service 'Authentication', ['LocalStorage', 'Auth', '$q', '$http', 'UserService', class Authentication
+    constructor: (@LocalStorage, @Auth, @$q, @$http, @UserService)->
         @poolId = ''
         @googleIdToken = ''
-        auth2.isSignedIn.listen(@googleSignedIn)
 
     init: (poolId)->
         AWS.config.region = 'us-east-1'
@@ -121,43 +120,27 @@ angular.module('starter.services', ['firebase'])
         if(existingId)
             AWS.config.credentials.identityId = existingId
 
-    googleSignedIn: (signedIn)=>
-        # console.log 'Authentication.googleSignedIn', signedIn
-        if signedIn
-            googleAuth = auth2.currentUser.get().getAuthResponse()
-            @Auth.$authWithOAuthToken(
-                "google", googleAuth.access_token
-            # ).then (authData)->
-            #     console.log 'after auth', authData
-            ).catch (error)->
-                console.log 'login error', error
-
     socialSignIn: (authResult)->
         defer = @$q.defer()
-        logins = {}
 
-        if authResult.provider == 'google' and
-                not auth2.isSignedIn.get()
-            @Auth.$unauth()
-            defer.reject() 
-            return defer.promise
+        @$http.post('https://u8x98h3ig6.execute-api.us-east-1.amazonaws.com/prod/FirebaseCognitoToken', 
+            'token': authResult.token
+        ).success (data, status, headers, config) ->
+            console.log('data result', data)
+            if(!data.failure)
+                params =
+                    RoleArn: 'arn:aws:iam::135172764304:role/Cognito_iClosetAuth_Role',
+                    WebIdentityToken: data.cognitoToken
+                AWS.config.credentials = new AWS.WebIdentityCredentials(params, (err) ->
+                    console.log(err, err.stack);
+                );
+                defer.resolve();
+            else
+                defer.reject();
+        .catch (err)->
+            console.log('lambda error', err)
+            defer.reject();
 
-        switch authResult.provider
-            when 'google'
-                googleAuth = auth2.currentUser.get().getAuthResponse()
-                logins['accounts.google.com'] = googleAuth.id_token
-            when 'facebook'
-                logins['graph.facebook.com'] = authResult.facebook.accessToken
-            when 'twitter'
-                logins['api.twitter.com'] = authResult.twitter.accessToken + ';' + authResult.twitter.accessTokenSecret
-
-
-        AWS.config.credentials = new AWS.CognitoIdentityCredentials(
-            AccountId: '135172764304'
-            IdentityPoolId: @poolId
-            Logins: logins
-        )
-        defer.resolve()
         defer.promise
 
 ]

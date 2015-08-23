@@ -11,12 +11,9 @@
       <div class="list padding">
         <div class="user-info"
             ng-if="authData">
-<!--           <div class="user-image"
-            ng-style="{backgroundImage: 'url({{authData[authData.provider].profileImageURL}})'}">
-          </div>  
- -->      
           <div class="card">
-            <div class="item item-avatar">
+            <div class="item item-avatar"
+              ng-if="authData.provider">
               <img src="{{authData[authData.provider].profileImageURL}}">
               <h2>{{authData[authData.provider].displayName}}</h2>
               <p>{{authData[authData.provider].email}}</p>
@@ -50,8 +47,7 @@
             ng-if="!authData">
           <button 
             class="button button-full button-assertive ion-social-googleplus icon-left"
-            google-signin
-            after-signin="googleLogin(authData)">
+            ng-click="socialLogin('google')">
             Login with Google
           </button>
           <button 

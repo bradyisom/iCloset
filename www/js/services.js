@@ -1,6 +1,5 @@
 (function() {
-  var AWSService, Authentication, LocalStorage, UserService,
-    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+  var AWSService, Authentication, LocalStorage, UserService;
 
   angular.module('starter.services', ['firebase']).service('LocalStorage', LocalStorage = (function() {
     function LocalStorage() {
@@ -163,16 +162,15 @@
       return $firebaseAuth(usersRef);
     }
   ]).service('Authentication', [
-    'LocalStorage', 'Auth', '$q', 'UserService', Authentication = (function() {
-      function Authentication(LocalStorage1, Auth, $q, UserService1) {
+    'LocalStorage', 'Auth', '$q', '$http', 'UserService', Authentication = (function() {
+      function Authentication(LocalStorage1, Auth, $q, $http, UserService1) {
         this.LocalStorage = LocalStorage1;
         this.Auth = Auth;
         this.$q = $q;
+        this.$http = $http;
         this.UserService = UserService1;
-        this.googleSignedIn = bind(this.googleSignedIn, this);
         this.poolId = '';
         this.googleIdToken = '';
-        auth2.isSignedIn.listen(this.googleSignedIn);
       }
 
       Authentication.prototype.init = function(poolId) {
@@ -189,42 +187,30 @@
         }
       };
 
-      Authentication.prototype.googleSignedIn = function(signedIn) {
-        var googleAuth;
-        if (signedIn) {
-          googleAuth = auth2.currentUser.get().getAuthResponse();
-          return this.Auth.$authWithOAuthToken("google", googleAuth.access_token)["catch"](function(error) {
-            return console.log('login error', error);
-          });
-        }
-      };
-
       Authentication.prototype.socialSignIn = function(authResult) {
-        var defer, googleAuth, logins;
+        var defer;
         defer = this.$q.defer();
-        logins = {};
-        if (authResult.provider === 'google' && !auth2.isSignedIn.get()) {
-          this.Auth.$unauth();
-          defer.reject();
-          return defer.promise;
-        }
-        switch (authResult.provider) {
-          case 'google':
-            googleAuth = auth2.currentUser.get().getAuthResponse();
-            logins['accounts.google.com'] = googleAuth.id_token;
-            break;
-          case 'facebook':
-            logins['graph.facebook.com'] = authResult.facebook.accessToken;
-            break;
-          case 'twitter':
-            logins['api.twitter.com'] = authResult.twitter.accessToken + ';' + authResult.twitter.accessTokenSecret;
-        }
-        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-          AccountId: '135172764304',
-          IdentityPoolId: this.poolId,
-          Logins: logins
+        this.$http.post('https://u8x98h3ig6.execute-api.us-east-1.amazonaws.com/prod/FirebaseCognitoToken', {
+          'token': authResult.token
+        }).success(function(data, status, headers, config) {
+          var params;
+          console.log('data result', data);
+          if (!data.failure) {
+            params = {
+              RoleArn: 'arn:aws:iam::135172764304:role/Cognito_iClosetAuth_Role',
+              WebIdentityToken: data.cognitoToken
+            };
+            AWS.config.credentials = new AWS.WebIdentityCredentials(params, function(err) {
+              return console.log(err, err.stack);
+            });
+            return defer.resolve();
+          } else {
+            return defer.reject();
+          }
+        })["catch"](function(err) {
+          console.log('lambda error', err);
+          return defer.reject();
         });
-        defer.resolve();
         return defer.promise;
       };
 

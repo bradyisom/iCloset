@@ -13,9 +13,7 @@
       $rootScope.authData = authData;
       if (authData) {
         console.log('Firebase credentials', authData);
-        return Authentication.socialSignIn(authData).then(function() {
-          return AWSService.getCredentials();
-        });
+        return Authentication.socialSignIn(authData);
       }
     });
   }).config(function($stateProvider, $urlRouterProvider) {
@@ -57,17 +55,5 @@
     });
     return $urlRouterProvider.otherwise('/app/playlists');
   });
-
-  window.onLoadCallback = function() {
-    return angular.element(document).ready(function() {
-      return gapi.load('auth2', function() {
-        window.auth2 = gapi.auth2.init({
-          client_id: '57043893067-1j9b63ap9ljggsd3m5nvhbe5n0bm180n.apps.googleusercontent.com',
-          scope: 'email profile openid'
-        });
-        return angular.bootstrap(document, ['starter']);
-      });
-    });
-  };
 
 }).call(this);
