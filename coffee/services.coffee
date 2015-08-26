@@ -102,10 +102,22 @@ angular.module('starter.services', ['firebase'])
     usersRef = new Firebase("https://icloset.firebaseio.com")
     $firebaseAuth(usersRef)
 ]
-.service 'Authentication', ['LocalStorage', 'Auth', '$q', '$http', 'UserService', class Authentication
-    constructor: (@LocalStorage, @Auth, @$q, @$http, @UserService)->
+.service 'Authentication', ['LocalStorage', 'Auth', '$q', '$http', 'UserService', '$rootScope', 
+class Authentication
+    constructor: (@LocalStorage, @Auth, @$q, @$http, @UserService, @$rootScope)->
         @poolId = ''
         @googleIdToken = ''
+    
+        @Auth.$onAuth (authData)=>
+            @$rootScope.authData = authData
+
+            if authData
+                console.log 'Firebase credentials', authData
+                @socialSignIn(authData).then =>
+                    @$rootScope.$broadcast 'login'
+            else
+                @$rootScope.$broadcast 'logout'
+
 
     init: (poolId)->
         AWS.config.region = 'us-east-1'

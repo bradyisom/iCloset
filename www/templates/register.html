@@ -1,0 +1,26 @@
+<ion-view view-title="Register">
+  <ion-content>
+    <form class="register-form">
+      <div class="list padding">
+        <label class="item item-input">
+          <span class="input-label">Email</span>
+          <input type="text" ng-model="ctrl.loginData.email">
+        </label>
+        <label class="item item-input">
+          <span class="input-label">Password</span>
+          <input type="password" ng-model="ctrl.loginData.password">
+        </label>
+        <label class="item item-input">
+          <span class="input-label">Confirm</span>
+          <input type="password" ng-model="ctrl.loginData.passwordConfirm">
+        </label>
+
+        <div class="error padding" ng-if="ctrl.error">
+          {{ctrl.error}}
+        </div>
+
+        <button class="button button-block button-positive" type="submit" ng-click="ctrl.register()">Sign Up</button>
+      </div>
+    </form>
+  </ion-content>
+</ion-view>

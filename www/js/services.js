@@ -162,15 +162,29 @@
       return $firebaseAuth(usersRef);
     }
   ]).service('Authentication', [
-    'LocalStorage', 'Auth', '$q', '$http', 'UserService', Authentication = (function() {
-      function Authentication(LocalStorage1, Auth, $q, $http, UserService1) {
+    'LocalStorage', 'Auth', '$q', '$http', 'UserService', '$rootScope', Authentication = (function() {
+      function Authentication(LocalStorage1, Auth, $q, $http, UserService1, $rootScope) {
         this.LocalStorage = LocalStorage1;
         this.Auth = Auth;
         this.$q = $q;
         this.$http = $http;
         this.UserService = UserService1;
+        this.$rootScope = $rootScope;
         this.poolId = '';
         this.googleIdToken = '';
+        this.Auth.$onAuth((function(_this) {
+          return function(authData) {
+            _this.$rootScope.authData = authData;
+            if (authData) {
+              console.log('Firebase credentials', authData);
+              return _this.socialSignIn(authData).then(function() {
+                return _this.$rootScope.$broadcast('login');
+              });
+            } else {
+              return _this.$rootScope.$broadcast('logout');
+            }
+          };
+        })(this));
       }
 
       Authentication.prototype.init = function(poolId) {

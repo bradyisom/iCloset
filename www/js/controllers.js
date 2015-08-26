@@ -1,41 +1,102 @@
 (function() {
-  angular.module('starter.controllers', ['starter.services']).controller('AppCtrl', function($scope, $ionicModal, $timeout, Authentication, AWSService, Auth) {
-    $scope.loginData = {};
-    $scope.googleLogin = function(googleAuthData) {
-      return Auth.$authWithOAuthToken("google", googleAuthData.access_token).then(function(authData) {
-        return authData.google.id_token = googleAuthData.id_token;
-      })["catch"](function(error) {
-        return console.log('login error', error);
-      });
-    };
-    $scope.socialLogin = function(provider) {
+  var LoginCtrl;
+
+  angular.module('starter.controllers', ['starter.services']).controller('LoginCtrl', LoginCtrl = (function() {
+    LoginCtrl.$inject = ['$scope', 'Auth', '$state', '$ionicHistory', '$ionicLoading'];
+
+    function LoginCtrl($scope1, Auth, $state, $ionicHistory, $ionicLoading) {
+      this.$scope = $scope1;
+      this.Auth = Auth;
+      this.$state = $state;
+      this.$ionicHistory = $ionicHistory;
+      this.$ionicLoading = $ionicLoading;
+      this.loginData = {};
+    }
+
+    LoginCtrl.prototype.socialLogin = function(provider) {
       var oauthScope;
+      this.error = null;
       oauthScope = 'email';
-      return Auth.$authWithOAuthPopup(provider, {
+      this.$ionicLoading.show();
+      return this.Auth.$authWithOAuthPopup(provider, {
         scope: oauthScope
-      })["catch"](function(error) {
-        return console.log('login error', error);
-      });
+      }).then((function(_this) {
+        return function(authData) {
+          _this.$ionicLoading.hide();
+          _this.$ionicHistory.nextViewOptions({
+            historyRoot: true
+          });
+          return _this.$state.go('app.profile');
+        };
+      })(this))["catch"]((function(_this) {
+        return function(error) {
+          _this.$ionicLoading.hide();
+          _this.error = error.toString();
+          return console.log('login error', error);
+        };
+      })(this));
     };
-    $scope.logout = function() {
-      return Auth.$unauth();
+
+    LoginCtrl.prototype.emailLogin = function() {
+      var oauthScope;
+      this.error = null;
+      oauthScope = 'email';
+      this.$ionicLoading.show();
+      return this.Auth.$authWithPassword({
+        email: this.loginData.email,
+        password: this.loginData.password
+      }).then((function(_this) {
+        return function(authData) {
+          _this.$ionicLoading.hide();
+          _this.$ionicHistory.nextViewOptions({
+            historyRoot: true
+          });
+          return _this.$state.go('app.profile');
+        };
+      })(this))["catch"]((function(_this) {
+        return function(error) {
+          _this.$ionicLoading.hide();
+          _this.error = error.toString();
+          return console.log('login error', error);
+        };
+      })(this));
     };
-    $scope.closeLogin = function() {
-      return $scope.modal.hide();
-    };
-    return $scope.login = function() {
-      if (!$scope.modal) {
-        return $ionicModal.fromTemplateUrl('templates/login.html', {
-          scope: $scope
-        }).then(function(modal) {
-          $scope.modal = modal;
-          return $scope.modal.show();
-        });
-      } else {
-        return $scope.modal.show();
+
+    LoginCtrl.prototype.register = function() {
+      this.error = null;
+      if (this.loginData.password !== this.loginData.passwordConfirm) {
+        this.error = 'Passwords must match';
+        return;
       }
+      this.$ionicLoading.show();
+      return this.Auth.$createUser({
+        email: this.loginData.email,
+        password: this.loginData.password
+      }).then((function(_this) {
+        return function() {
+          _this.$ionicLoading.hide();
+          return _this.$ionicHistory.goBack();
+        };
+      })(this))["catch"]((function(_this) {
+        return function(error) {
+          _this.$ionicLoading.hide();
+          _this.error = error.toString();
+          return console.log('register error', error);
+        };
+      })(this));
     };
-  }).controller('PlaylistsCtrl', function($scope) {
+
+    LoginCtrl.prototype.logout = function() {
+      this.$ionicHistory.nextViewOptions({
+        historyRoot: true
+      });
+      this.$state.go('app.login');
+      return this.Auth.$unauth();
+    };
+
+    return LoginCtrl;
+
+  })()).controller('PlaylistsCtrl', function($scope) {
     return $scope.playlists = [
       {
         title: 'Reggae',

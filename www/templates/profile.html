@@ -1,0 +1,37 @@
+<ion-view view-title="Profile">
+  <ion-content>
+  	<div class="list padding user-info">
+	    <div class="card">
+	      <div class="item item-avatar"
+	        ng-if="authData.provider">
+	        <img ng-src="{{authData[authData.provider].profileImageURL}}">
+	        <h2>{{authData[authData.provider].displayName}}</h2>
+	        <p>{{authData[authData.provider].email}}</p>
+	        <p ng-if="authData[authData.provider].username">@{{authData[authData.provider].username}}</p>
+	      </div>    
+	    </div>
+	    <div ng-switch="authData.provider">
+	      <button ng-switch-when="facebook"
+	        class="button button-block button-positive ion-social-facebook icon-left"
+	        ng-click="ctrl.logout()">
+	        Logout
+	      </button>
+	      <button ng-switch-when="twitter"
+	        class="button button-block button-calm ion-social-twitter icon-left"
+	        ng-click="ctrl.logout()">
+	        Logout
+	      </button>
+	      <button ng-switch-when="google"
+	        class="button button-block button-assertive ion-social-googleplus icon-left"
+	        ng-click="ctrl.logout()">
+	        Logout
+	      </button>
+	      <button ng-switch-default
+	        class="button button-block button-dark ion-email icon-left"
+	        ng-click="ctrl.logout()">
+	        Logout
+	      </button>
+	    </div>
+    </div>
+  </ion-content>
+</ion-view>

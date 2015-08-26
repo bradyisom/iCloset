@@ -1,78 +1,48 @@
-<ion-modal-view>
-  <ion-header-bar>
-    <h1 class="title">Login</h1>
-    <div class="buttons">
-      <button class="button button-clear" ng-click="closeLogin()">Close</button>
-    </div>
-  </ion-header-bar>
+<ion-view view-title="Login">
   <ion-content>
-<!--     <form ng-submit="doLogin()"> -->
+    <form class="login-form list padding">
+      <div class="oauth-signin list">
+        <button 
+          class="button button-full button-assertive ion-social-googleplus icon-left"
+          ng-click="ctrl.socialLogin('google')">
+          Login with Google
+        </button>
+        <button 
+          class="button button-full button-positive ion-social-facebook icon-left"
+          ng-click="ctrl.socialLogin('facebook')">
+          Login with Facebook
+        </button>
+        <button 
+          class="button button-full button-calm ion-social-twitter icon-left"
+          ng-click="ctrl.socialLogin('twitter')">
+          Login with Twitter
+        </button>
+      </div>
+    </form>
+
+    <div class="error padding-horizontal" ng-if="ctrl.error">
+      {{ctrl.error}}
+    </div>
+
     <form class="login-form">
       <div class="list padding">
-        <div class="user-info"
-            ng-if="authData">
-          <div class="card">
-            <div class="item item-avatar"
-              ng-if="authData.provider">
-              <img src="{{authData[authData.provider].profileImageURL}}">
-              <h2>{{authData[authData.provider].displayName}}</h2>
-              <p>{{authData[authData.provider].email}}</p>
-              <p ng-if="authData[authData.provider].username">@{{authData[authData.provider].username}}</p>
-            </div>    
-          </div>
-          <div ng-switch="authData.provider">
-            <button ng-switch-when="facebook"
-              class="button button-block button-positive ion-social-facebook icon-left"
-              ng-click="logout()">
-              Logout
-            </button>
-            <button ng-switch-when="twitter"
-              class="button button-block button-calm ion-social-twitter icon-left"
-              ng-click="logout()">
-              Logout
-            </button>
-            <button ng-switch-when="google"
-              class="button button-block button-assertive ion-social-googleplus icon-left"
-              ng-click="logout()">
-              Logout
-            </button>
-            <button ng-switch-default
-              class="button button-block button-assertive ion-log-out icon-left"
-              ng-click="logout()">
-              Logout
-            </button>
-          </div>
-        </div>
-        <div class="oauth-signin list"
-            ng-if="!authData">
-          <button 
-            class="button button-full button-assertive ion-social-googleplus icon-left"
-            ng-click="socialLogin('google')">
-            Login with Google
-          </button>
-          <button 
-            class="button button-full button-positive ion-social-facebook icon-left"
-            ng-click="socialLogin('facebook')">
-            Login with Facebook
-          </button>
-          <button 
-            class="button button-full button-calm ion-social-twitter icon-left"
-            ng-click="socialLogin('twitter')">
-            Login with Twitter
-          </button>
-        </div>
-<!--         <label class="item item-input">
-          <span class="input-label">Username</span>
-          <input type="text" ng-model="loginData.username">
+        <label class="item item-input">
+          <span class="input-label">Email</span>
+          <input type="text" ng-model="ctrl.loginData.email">
         </label>
         <label class="item item-input">
           <span class="input-label">Password</span>
-          <input type="password" ng-model="loginData.password">
+          <input type="password" ng-model="ctrl.loginData.password">
         </label>
-        <label class="item">
-          <button class="button button-block button-positive" type="submit">Log in</button>
-        </label> -->
+        <button class="button button-block button-dark ion-email icon-left" 
+          type="submit" ng-click="ctrl.emailLogin()">
+          Login with Email
+        </button>
+        <button class="button button-block button-stable" 
+          ui-sref="app.register">
+          Register
+        </button>
       </div>
     </form>
   </ion-content>
-</ion-modal-view>
+</ion-view>

@@ -18,14 +18,6 @@ angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives',
 
   Authentication.init('us-east-1:d0692cb3-b12a-44bf-afb1-91c0e44dee9a')
 
-  Auth.$onAuth (authData)->
-    $rootScope.authData = authData
-
-    if authData
-      console.log 'Firebase credentials', authData
-
-      Authentication.socialSignIn(authData);
-
 
 .config ($stateProvider, $urlRouterProvider) ->
   $stateProvider
@@ -34,7 +26,29 @@ angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives',
     url: "/app"
     abstract: true
     templateUrl: "templates/menu.html"
-    controller: 'AppCtrl'
+    # controller: 'AppCtrl'
+
+  .state 'app.profile',
+    url: "/profile"
+    views: 
+      'menuContent':
+        templateUrl: "templates/profile.html"
+        controller: 'LoginCtrl as ctrl'
+
+  .state 'app.login',
+    url: "/login"
+    views: 
+      'menuContent':
+        templateUrl: "templates/login.html"
+        controller: 'LoginCtrl as ctrl'
+
+  .state 'app.register',
+    url: "/register"
+    views: 
+      'menuContent':
+        templateUrl: "templates/register.html"
+        controller: 'LoginCtrl as ctrl'
+
 
   .state 'app.search',
     url: "/search"
@@ -63,5 +77,5 @@ angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives',
         controller: 'PlaylistCtrl'
 
   # if none of the above states are matched, use this as the fallback
-  $urlRouterProvider.otherwise '/app/playlists'
+  $urlRouterProvider.otherwise '/app/login'
 

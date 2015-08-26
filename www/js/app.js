@@ -8,20 +8,36 @@
         return StatusBar.styleDefault();
       }
     });
-    Authentication.init('us-east-1:d0692cb3-b12a-44bf-afb1-91c0e44dee9a');
-    return Auth.$onAuth(function(authData) {
-      $rootScope.authData = authData;
-      if (authData) {
-        console.log('Firebase credentials', authData);
-        return Authentication.socialSignIn(authData);
-      }
-    });
+    return Authentication.init('us-east-1:d0692cb3-b12a-44bf-afb1-91c0e44dee9a');
   }).config(function($stateProvider, $urlRouterProvider) {
     $stateProvider.state('app', {
       url: "/app",
       abstract: true,
-      templateUrl: "templates/menu.html",
-      controller: 'AppCtrl'
+      templateUrl: "templates/menu.html"
+    }).state('app.profile', {
+      url: "/profile",
+      views: {
+        'menuContent': {
+          templateUrl: "templates/profile.html",
+          controller: 'LoginCtrl as ctrl'
+        }
+      }
+    }).state('app.login', {
+      url: "/login",
+      views: {
+        'menuContent': {
+          templateUrl: "templates/login.html",
+          controller: 'LoginCtrl as ctrl'
+        }
+      }
+    }).state('app.register', {
+      url: "/register",
+      views: {
+        'menuContent': {
+          templateUrl: "templates/register.html",
+          controller: 'LoginCtrl as ctrl'
+        }
+      }
     }).state('app.search', {
       url: "/search",
       views: {
@@ -53,7 +69,7 @@
         }
       }
     });
-    return $urlRouterProvider.otherwise('/app/playlists');
+    return $urlRouterProvider.otherwise('/app/login');
   });
 
 }).call(this);

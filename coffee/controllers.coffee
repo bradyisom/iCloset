@@ -1,59 +1,79 @@
 angular.module('starter.controllers', ['starter.services'])
 
-.controller 'AppCtrl', ($scope, $ionicModal, $timeout, Authentication, AWSService, Auth) ->
-  # Form data for the login modal
-  $scope.loginData = {}
+.controller 'LoginCtrl', class LoginCtrl
+    @$inject = ['$scope', 'Auth', '$state', '$ionicHistory', '$ionicLoading']
+    constructor: (@$scope, @Auth, @$state, @$ionicHistory, @$ionicLoading) ->
+        # Form data for the login modal
+        @loginData = {}
 
-  $scope.googleLogin = (googleAuthData)->
-      # console.log 'googleLogin', googleAuthData
-      Auth.$authWithOAuthToken(
-        "google", googleAuthData.access_token
-      ).then (authData)->
-          authData.google.id_token = googleAuthData.id_token
-          # console.log 'after auth', authData
-      .catch (error)->
-          console.log 'login error', error
+    socialLogin: (provider)->
+        # console.log 'login', provider
+        @error = null
+        oauthScope = 'email'
+        @$ionicLoading.show()
+        @Auth.$authWithOAuthPopup provider,
+            scope: oauthScope
+        .then (authData)=>
+            @$ionicLoading.hide()
+            @$ionicHistory.nextViewOptions(historyRoot: true)
+            @$state.go 'app.profile'
+        .catch (error)=>
+            @$ionicLoading.hide()
+            @error = error.toString()
+            console.log 'login error', error
 
-  $scope.socialLogin = (provider)->
-      # console.log 'login', provider
-      oauthScope = 'email'
-      Auth.$authWithOAuthPopup(provider,
-          scope: oauthScope
-      # ).then (authData)->
-      #     console.log 'after auth', authData
-      ).catch (error)->
-          console.log 'login error', error
+    emailLogin: ->
+        # console.log 'login', provider
+        @error = null
+        oauthScope = 'email'
+        @$ionicLoading.show()
+        @Auth.$authWithPassword
+            email: @loginData.email
+            password: @loginData.password
+        .then (authData)=>
+            @$ionicLoading.hide()
+            @$ionicHistory.nextViewOptions(historyRoot: true)
+            @$state.go 'app.profile'
+        .catch (error)=>
+            @$ionicLoading.hide()
+            @error = error.toString()
+            console.log 'login error', error
 
-  $scope.logout = ->
-      # console.log 'logout'
-      Auth.$unauth()
+    register: ->
+        @error = null
+        if @loginData.password != @loginData.passwordConfirm
+            @error = 'Passwords must match'
+            return
 
-  # Triggered in the login modal to close it
-  $scope.closeLogin = ->
-    $scope.modal.hide()
+        @$ionicLoading.show()
+        @Auth.$createUser
+            email: @loginData.email
+            password: @loginData.password
+        .then =>
+            @$ionicLoading.hide()
+            @$ionicHistory.goBack()
+        .catch (error)=>
+            @$ionicLoading.hide()
+            @error = error.toString()
+            console.log 'register error', error
 
-  # Open the login modal
-  $scope.login = ->
-    if not $scope.modal
-      # Create the login modal that we will use later
-      $ionicModal.fromTemplateUrl('templates/login.html',
-        scope: $scope
-      ).then (modal)->
-        $scope.modal = modal
-        $scope.modal.show()
-    else
-      $scope.modal.show()
+
+    logout: ->
+        # console.log 'logout'
+        @$ionicHistory.nextViewOptions(historyRoot: true)
+        @$state.go 'app.login'
+        @Auth.$unauth()
 
 
 .controller 'PlaylistsCtrl', ($scope)->
-  $scope.playlists = [
-    { title: 'Reggae', id: 1 }
-    { title: 'Chill', id: 2 }
-    { title: 'Dubstep', id: 3 }
-    { title: 'Indie', id: 4 }
-    { title: 'Rap', id: 5 }
-    { title: 'Rock', id: 6 }
-    { title: 'Cowbell', id: 7 }
-  ]
+    $scope.playlists = [
+        { title: 'Reggae', id: 1 }
+        { title: 'Chill', id: 2 }
+        { title: 'Dubstep', id: 3 }
+        { title: 'Indie', id: 4 }
+        { title: 'Rap', id: 5 }
+        { title: 'Rock', id: 6 }
+        { title: 'Cowbell', id: 7 }
+    ]
 
 .controller 'PlaylistCtrl', ($scope, $stateParams)->
