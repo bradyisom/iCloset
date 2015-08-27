@@ -65,6 +65,57 @@ angular.module('starter.controllers', ['starter.services'])
         @Authentication.logout()
 
 
+.controller 'ArticlesCtrl', class
+    @$inject = ['$scope', '$firebaseArray', '$firebaseObject', 'FIREBASE_URL', '$ionicModal']
+    constructor:(@$scope, $firebaseArray, $firebaseObject, @FIREBASE_URL, @$ionicModal)->
+        @$scope.$watch('user', (user)=>
+            if user
+                @articles = $firebaseArray(new Firebase(@FIREBASE_URL).child("articles/#{@$scope.user.uid}"))
+        )
+
+    addArticle: ->
+        @article = {}
+        @$ionicModal.fromTemplateUrl 'templates/editArticle.html', 
+            scope: @$scope,
+            animation: 'slide-in-up'
+        .then (modal) =>
+            @modal = modal
+            @modal.show()
+
+    closeModal: ->
+        if @modal
+            @article.imageUrl = 'http://lorempixum.com/120/120/fashion'
+            @articles.$add(@article)
+            @modal.hide()
+            @article = null
+
+    deleteArticle: (article)->
+        @articles.$remove article
+
+.controller 'ArticleCtrl', class
+    @$inject = ['$scope', '$firebaseObject', '$stateParams', 'FIREBASE_URL', '$ionicModal']
+    constructor: (@$scope, $firebaseObject, @$stateParams, @FIREBASE_URL, @$ionicModal)->
+        @$scope.$watch('user', (user)=>
+            if user
+                @article = $firebaseObject(new Firebase(@FIREBASE_URL).child("articles/#{@$scope.user.uid}/#{@$stateParams.articleId}"))
+                @article.$bindTo @$scope, 'article'
+        )
+
+    editArticle: ->
+        @$ionicModal.fromTemplateUrl 'templates/editArticle.html', 
+            scope: @$scope,
+            animation: 'slide-in-up'
+        .then (modal) =>
+            @modal = modal
+            @modal.show()
+
+
+    closeModal: ->
+        if @modal
+            @article.$save()
+            @modal.hide()
+
+
 .controller 'PlaylistsCtrl', ($scope)->
     $scope.playlists = [
         { title: 'Reggae', id: 1 }

@@ -1,0 +1,22 @@
+<ion-view view-title="My Threads">
+	<ion-nav-buttons side="right">
+        <button class="button button-balanced icon-left ion-plus-circled" ng-click="ctrl.addArticle()">
+            Add
+        </button>
+    </ion-nav-buttons>
+	<ion-content>
+		<ion-list>
+			<ion-item ng-repeat="article in ctrl.articles" 
+				class="item-thumbnail-left"
+				href="#/app/articles/{{article.$id}}">
+			    <img ng-src="{{article.imageUrl}}">
+			    <h2>{{article.title}}</h2>
+			    <p>{{article.description}}</p>
+				<ion-option-button 
+					class="button-assertive icon ion-trash-a"
+					ng-click="ctrl.deleteArticle(article)">
+				</ion-option-button>
+			</ion-item>
+		</ion-list>
+	</ion-content>
+</ion-view>

@@ -97,6 +97,89 @@
 
     return LoginCtrl;
 
+  })()).controller('ArticlesCtrl', (function() {
+    _Class.$inject = ['$scope', '$firebaseArray', '$firebaseObject', 'FIREBASE_URL', '$ionicModal'];
+
+    function _Class($scope1, $firebaseArray, $firebaseObject, FIREBASE_URL, $ionicModal) {
+      this.$scope = $scope1;
+      this.FIREBASE_URL = FIREBASE_URL;
+      this.$ionicModal = $ionicModal;
+      this.$scope.$watch('user', (function(_this) {
+        return function(user) {
+          if (user) {
+            return _this.articles = $firebaseArray(new Firebase(_this.FIREBASE_URL).child("articles/" + _this.$scope.user.uid));
+          }
+        };
+      })(this));
+    }
+
+    _Class.prototype.addArticle = function() {
+      this.article = {};
+      return this.$ionicModal.fromTemplateUrl('templates/editArticle.html', {
+        scope: this.$scope,
+        animation: 'slide-in-up'
+      }).then((function(_this) {
+        return function(modal) {
+          _this.modal = modal;
+          return _this.modal.show();
+        };
+      })(this));
+    };
+
+    _Class.prototype.closeModal = function() {
+      if (this.modal) {
+        this.article.imageUrl = 'http://lorempixum.com/120/120/fashion';
+        this.articles.$add(this.article);
+        this.modal.hide();
+        return this.article = null;
+      }
+    };
+
+    _Class.prototype.deleteArticle = function(article) {
+      return this.articles.$remove(article);
+    };
+
+    return _Class;
+
+  })()).controller('ArticleCtrl', (function() {
+    _Class.$inject = ['$scope', '$firebaseObject', '$stateParams', 'FIREBASE_URL', '$ionicModal'];
+
+    function _Class($scope1, $firebaseObject, $stateParams1, FIREBASE_URL, $ionicModal) {
+      this.$scope = $scope1;
+      this.$stateParams = $stateParams1;
+      this.FIREBASE_URL = FIREBASE_URL;
+      this.$ionicModal = $ionicModal;
+      this.$scope.$watch('user', (function(_this) {
+        return function(user) {
+          if (user) {
+            _this.article = $firebaseObject(new Firebase(_this.FIREBASE_URL).child("articles/" + _this.$scope.user.uid + "/" + _this.$stateParams.articleId));
+            return _this.article.$bindTo(_this.$scope, 'article');
+          }
+        };
+      })(this));
+    }
+
+    _Class.prototype.editArticle = function() {
+      return this.$ionicModal.fromTemplateUrl('templates/editArticle.html', {
+        scope: this.$scope,
+        animation: 'slide-in-up'
+      }).then((function(_this) {
+        return function(modal) {
+          _this.modal = modal;
+          return _this.modal.show();
+        };
+      })(this));
+    };
+
+    _Class.prototype.closeModal = function() {
+      if (this.modal) {
+        this.article.$save();
+        return this.modal.hide();
+      }
+    };
+
+    return _Class;
+
   })()).controller('PlaylistsCtrl', function($scope) {
     return $scope.playlists = [
       {

@@ -49,32 +49,19 @@ angular.module('starter', ['ionic', 'starter.controllers', 'starter.directives',
         templateUrl: "templates/register.html"
         controller: 'LoginCtrl as ctrl'
 
-
-  .state 'app.search',
-    url: "/search"
-    views: 
-      'menuContent':
-        templateUrl: "templates/search.html"
-
-  .state 'app.browse',
-    url: "/browse"
+  .state 'app.articles',
+    url: "/articles"
     views:
       'menuContent':
-        templateUrl: "templates/browse.html"
-
-  .state 'app.playlists',
-    url: "/playlists"
-    views:
-      'menuContent':
-        templateUrl: "templates/playlists.html"
-        controller: 'PlaylistsCtrl'
+        templateUrl: "templates/articles.html"
+        controller: 'ArticlesCtrl as ctrl'
 
   .state 'app.single',
-    url: "/playlists/:playlistId"
+    url: "/articles/:articleId"
     views:
       'menuContent':
-        templateUrl: "templates/playlist.html"
-        controller: 'PlaylistCtrl'
+        templateUrl: "templates/article.html"
+        controller: 'ArticleCtrl as ctrl'
 
   # if none of the above states are matched, use this as the fallback
   $urlRouterProvider.otherwise '/app/login'
