@@ -98,21 +98,29 @@ angular.module('starter.services', ['firebase'])
         # d.resolve(@user)
         return d.promise
 ]
-.factory "Auth", ['$firebaseAuth', ($firebaseAuth) ->
-    usersRef = new Firebase("https://icloset.firebaseio.com")
+.constant('FIREBASE_URL', "https://icloset.firebaseio.com")
+.factory "Auth", ['$firebaseAuth', 'FIREBASE_URL', ($firebaseAuth, FIREBASE_URL) ->
+    usersRef = new Firebase(FIREBASE_URL)
     $firebaseAuth(usersRef)
 ]
-.service 'Authentication', ['LocalStorage', 'Auth', '$q', '$http', 'UserService', '$rootScope', 
+.service 'Authentication', ['LocalStorage', 'Auth', '$q', '$http', 'UserService', 
+    '$rootScope', '$firebaseObject', 'FIREBASE_URL',
 class Authentication
-    constructor: (@LocalStorage, @Auth, @$q, @$http, @UserService, @$rootScope)->
+    constructor: (@LocalStorage, @Auth, @$q, @$http, @UserService, 
+                @$rootScope, @$firebaseObject, @FIREBASE_URL)->
         @poolId = ''
         @googleIdToken = ''
+
+        @firebaseRef = new Firebase(@FIREBASE_URL)
     
         @Auth.$onAuth (authData)=>
             @$rootScope.authData = authData
 
             if authData
                 console.log 'Firebase credentials', authData
+
+                @createUser(authData)
+
                 @socialSignIn(authData).then =>
                     @$rootScope.$broadcast 'login'
             else
@@ -132,6 +140,22 @@ class Authentication
         if(existingId)
             AWS.config.credentials.identityId = existingId
 
+    createUser: (authData)->
+        user = @$firebaseObject(@firebaseRef.child("users/#{authData.uid}"))
+        user.$loaded().then =>
+            console.log 'user', user
+            if not user.uid
+                user.uid = authData.uid
+                user.provider = authData.provider
+                user.name = authData[authData.provider].displayName || authData[authData.provider].email
+                user.email = authData[authData.provider].email || '@' + authData[authData.provider].username
+                user.$save()
+
+        user.$bindTo(@$rootScope, 'user').then (unbind)=>
+            @unbindUser = unbind
+
+        @userRef = user
+
     socialSignIn: (authResult)->
         defer = @$q.defer()
 
@@ -142,7 +166,7 @@ class Authentication
             if(!data.failure)
                 params =
                     RoleArn: 'arn:aws:iam::135172764304:role/Cognito_iClosetAuth_Role',
-                    WebIdentityToken: data.cognitoToken
+                    WebIdentityToken: data.Token
                 AWS.config.credentials = new AWS.WebIdentityCredentials(params, (err) ->
                     console.log(err, err.stack);
                 );
@@ -154,5 +178,12 @@ class Authentication
             defer.reject();
 
         defer.promise
+
+    logout: ->
+        if @userRef
+            @unbindUser()
+            @userRef.$destroy()
+            @userRef = null
+        @Auth.$unauth()
 
 ]

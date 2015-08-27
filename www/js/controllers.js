@@ -2,14 +2,15 @@
   var LoginCtrl;
 
   angular.module('starter.controllers', ['starter.services']).controller('LoginCtrl', LoginCtrl = (function() {
-    LoginCtrl.$inject = ['$scope', 'Auth', '$state', '$ionicHistory', '$ionicLoading'];
+    LoginCtrl.$inject = ['$scope', 'Auth', '$state', '$ionicHistory', '$ionicLoading', 'Authentication'];
 
-    function LoginCtrl($scope1, Auth, $state, $ionicHistory, $ionicLoading) {
+    function LoginCtrl($scope1, Auth, $state, $ionicHistory, $ionicLoading, Authentication) {
       this.$scope = $scope1;
       this.Auth = Auth;
       this.$state = $state;
       this.$ionicHistory = $ionicHistory;
       this.$ionicLoading = $ionicLoading;
+      this.Authentication = Authentication;
       this.loginData = {};
     }
 
@@ -91,7 +92,7 @@
         historyRoot: true
       });
       this.$state.go('app.login');
-      return this.Auth.$unauth();
+      return this.Authentication.logout();
     };
 
     return LoginCtrl;

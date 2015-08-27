@@ -155,28 +155,32 @@
       return UserService;
 
     })()
-  ]).factory("Auth", [
-    '$firebaseAuth', function($firebaseAuth) {
+  ]).constant('FIREBASE_URL', "https://icloset.firebaseio.com").factory("Auth", [
+    '$firebaseAuth', 'FIREBASE_URL', function($firebaseAuth, FIREBASE_URL) {
       var usersRef;
-      usersRef = new Firebase("https://icloset.firebaseio.com");
+      usersRef = new Firebase(FIREBASE_URL);
       return $firebaseAuth(usersRef);
     }
   ]).service('Authentication', [
-    'LocalStorage', 'Auth', '$q', '$http', 'UserService', '$rootScope', Authentication = (function() {
-      function Authentication(LocalStorage1, Auth, $q, $http, UserService1, $rootScope) {
+    'LocalStorage', 'Auth', '$q', '$http', 'UserService', '$rootScope', '$firebaseObject', 'FIREBASE_URL', Authentication = (function() {
+      function Authentication(LocalStorage1, Auth, $q, $http, UserService1, $rootScope, $firebaseObject, FIREBASE_URL1) {
         this.LocalStorage = LocalStorage1;
         this.Auth = Auth;
         this.$q = $q;
         this.$http = $http;
         this.UserService = UserService1;
         this.$rootScope = $rootScope;
+        this.$firebaseObject = $firebaseObject;
+        this.FIREBASE_URL = FIREBASE_URL1;
         this.poolId = '';
         this.googleIdToken = '';
+        this.firebaseRef = new Firebase(this.FIREBASE_URL);
         this.Auth.$onAuth((function(_this) {
           return function(authData) {
             _this.$rootScope.authData = authData;
             if (authData) {
               console.log('Firebase credentials', authData);
+              _this.createUser(authData);
               return _this.socialSignIn(authData).then(function() {
                 return _this.$rootScope.$broadcast('login');
               });
@@ -201,6 +205,29 @@
         }
       };
 
+      Authentication.prototype.createUser = function(authData) {
+        var user;
+        user = this.$firebaseObject(this.firebaseRef.child("users/" + authData.uid));
+        user.$loaded().then((function(_this) {
+          return function() {
+            console.log('user', user);
+            if (!user.uid) {
+              user.uid = authData.uid;
+              user.provider = authData.provider;
+              user.name = authData[authData.provider].displayName || authData[authData.provider].email;
+              user.email = authData[authData.provider].email || '@' + authData[authData.provider].username;
+              return user.$save();
+            }
+          };
+        })(this));
+        user.$bindTo(this.$rootScope, 'user').then((function(_this) {
+          return function(unbind) {
+            return _this.unbindUser = unbind;
+          };
+        })(this));
+        return this.userRef = user;
+      };
+
       Authentication.prototype.socialSignIn = function(authResult) {
         var defer;
         defer = this.$q.defer();
@@ -212,7 +239,7 @@
           if (!data.failure) {
             params = {
               RoleArn: 'arn:aws:iam::135172764304:role/Cognito_iClosetAuth_Role',
-              WebIdentityToken: data.cognitoToken
+              WebIdentityToken: data.Token
             };
             AWS.config.credentials = new AWS.WebIdentityCredentials(params, function(err) {
               return console.log(err, err.stack);
@@ -226,6 +253,15 @@
           return defer.reject();
         });
         return defer.promise;
+      };
+
+      Authentication.prototype.logout = function() {
+        if (this.userRef) {
+          this.unbindUser();
+          this.userRef.$destroy();
+          this.userRef = null;
+        }
+        return this.Auth.$unauth();
       };
 
       return Authentication;

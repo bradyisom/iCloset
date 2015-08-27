@@ -1,8 +1,8 @@
 angular.module('starter.controllers', ['starter.services'])
 
 .controller 'LoginCtrl', class LoginCtrl
-    @$inject = ['$scope', 'Auth', '$state', '$ionicHistory', '$ionicLoading']
-    constructor: (@$scope, @Auth, @$state, @$ionicHistory, @$ionicLoading) ->
+    @$inject = ['$scope', 'Auth', '$state', '$ionicHistory', '$ionicLoading', 'Authentication']
+    constructor: (@$scope, @Auth, @$state, @$ionicHistory, @$ionicLoading, @Authentication) ->
         # Form data for the login modal
         @loginData = {}
 
@@ -62,7 +62,7 @@ angular.module('starter.controllers', ['starter.services'])
         # console.log 'logout'
         @$ionicHistory.nextViewOptions(historyRoot: true)
         @$state.go 'app.login'
-        @Auth.$unauth()
+        @Authentication.logout()
 
 
 .controller 'PlaylistsCtrl', ($scope)->
