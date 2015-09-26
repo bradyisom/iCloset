@@ -1,5 +1,6 @@
 (function() {
-  var LoginCtrl;
+  var LoginCtrl,
+    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   angular.module('starter.controllers', ['starter.services']).controller('LoginCtrl', LoginCtrl = (function() {
     LoginCtrl.$inject = ['$scope', 'Auth', '$state', '$ionicHistory', '$ionicLoading', 'Authentication'];
@@ -98,12 +99,15 @@
     return LoginCtrl;
 
   })()).controller('ArticlesCtrl', (function() {
-    _Class.$inject = ['$scope', '$firebaseArray', '$firebaseObject', 'FIREBASE_URL', '$ionicModal'];
+    _Class.$inject = ['$scope', '$firebaseArray', '$firebaseObject', 'FIREBASE_URL', '$ionicModal', 'ArticleService'];
 
-    function _Class($scope1, $firebaseArray, $firebaseObject, FIREBASE_URL, $ionicModal) {
+    function _Class($scope1, $firebaseArray, $firebaseObject1, FIREBASE_URL, $ionicModal, Article) {
       this.$scope = $scope1;
+      this.$firebaseObject = $firebaseObject1;
       this.FIREBASE_URL = FIREBASE_URL;
       this.$ionicModal = $ionicModal;
+      this.Article = Article;
+      this.uploadImage = bind(this.uploadImage, this);
       this.$scope.$watch('user', (function(_this) {
         return function(user) {
           if (user) {
@@ -114,22 +118,36 @@
     }
 
     _Class.prototype.addArticle = function() {
-      this.article = {};
-      return this.$ionicModal.fromTemplateUrl('templates/editArticle.html', {
-        scope: this.$scope,
-        animation: 'slide-in-up'
-      }).then((function(_this) {
-        return function(modal) {
-          _this.modal = modal;
-          return _this.modal.show();
+      return this.articles.$add({}).then((function(_this) {
+        return function(ref) {
+          _this.article = _this.$firebaseObject(ref);
+          return _this.$ionicModal.fromTemplateUrl('templates/editArticle.html', {
+            scope: _this.$scope,
+            animation: 'slide-in-up'
+          }).then(function(modal) {
+            _this.modal = modal;
+            return _this.modal.show();
+          });
+        };
+      })(this));
+    };
+
+    _Class.prototype.uploadImage = function(input) {
+      var file;
+      if (!input.files.length) {
+        return;
+      }
+      file = input.files[0];
+      return this.Article.uploadImage(this.article, file).then((function(_this) {
+        return function(data) {
+          return _this.article.imageUrl = data.Location;
         };
       })(this));
     };
 
     _Class.prototype.closeModal = function() {
       if (this.modal) {
-        this.article.imageUrl = 'http://lorempixum.com/120/120/fashion';
-        this.articles.$add(this.article);
+        this.article.$save();
         this.modal.hide();
         return this.article = null;
       }
@@ -142,13 +160,17 @@
     return _Class;
 
   })()).controller('ArticleCtrl', (function() {
-    _Class.$inject = ['$scope', '$firebaseObject', '$stateParams', 'FIREBASE_URL', '$ionicModal'];
+    _Class.$inject = ['$scope', '$firebaseObject', '$stateParams', 'FIREBASE_URL', '$ionicModal', '$cordovaCapture', 'AWSService', 'ArticleService'];
 
-    function _Class($scope1, $firebaseObject, $stateParams1, FIREBASE_URL, $ionicModal) {
+    function _Class($scope1, $firebaseObject, $stateParams1, FIREBASE_URL, $ionicModal, $cordovaCapture, AWSService, Article) {
       this.$scope = $scope1;
       this.$stateParams = $stateParams1;
       this.FIREBASE_URL = FIREBASE_URL;
       this.$ionicModal = $ionicModal;
+      this.$cordovaCapture = $cordovaCapture;
+      this.AWSService = AWSService;
+      this.Article = Article;
+      this.uploadImage = bind(this.uploadImage, this);
       this.$scope.$watch('user', (function(_this) {
         return function(user) {
           if (user) {
@@ -158,6 +180,35 @@
         };
       })(this));
     }
+
+    _Class.prototype.getImage = function() {
+      var options;
+      options = {
+        limit: 3
+      };
+      return this.$cordovaCapture.captureImage(options).then((function(_this) {
+        return function(imageData) {
+          return console.log('Success! Image data is here', imageData);
+        };
+      })(this), (function(_this) {
+        return function(err) {
+          return console.log('Error with image', err);
+        };
+      })(this));
+    };
+
+    _Class.prototype.uploadImage = function(input) {
+      var file;
+      if (!input.files.length) {
+        return;
+      }
+      file = input.files[0];
+      return this.Article.uploadImage(this.article, file).then((function(_this) {
+        return function(data) {
+          return _this.$scope.article.imageUrl = data.Location;
+        };
+      })(this));
+    };
 
     _Class.prototype.editArticle = function() {
       return this.$ionicModal.fromTemplateUrl('templates/editArticle.html', {

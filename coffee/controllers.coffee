@@ -66,26 +66,33 @@ angular.module('starter.controllers', ['starter.services'])
 
 
 .controller 'ArticlesCtrl', class
-    @$inject = ['$scope', '$firebaseArray', '$firebaseObject', 'FIREBASE_URL', '$ionicModal']
-    constructor:(@$scope, $firebaseArray, $firebaseObject, @FIREBASE_URL, @$ionicModal)->
+    @$inject = ['$scope', '$firebaseArray', '$firebaseObject', 'FIREBASE_URL', '$ionicModal', 'ArticleService']
+    constructor:(@$scope, $firebaseArray, @$firebaseObject, @FIREBASE_URL, @$ionicModal, @Article)->
         @$scope.$watch('user', (user)=>
             if user
+                # @articles = $firebaseArray(new Firebase(@FIREBASE_URL).child("articles").orderByChild('uid').equalTo(@$scope.user.uid))
                 @articles = $firebaseArray(new Firebase(@FIREBASE_URL).child("articles/#{@$scope.user.uid}"))
         )
 
     addArticle: ->
-        @article = {}
-        @$ionicModal.fromTemplateUrl 'templates/editArticle.html', 
-            scope: @$scope,
-            animation: 'slide-in-up'
-        .then (modal) =>
-            @modal = modal
-            @modal.show()
+        @articles.$add({}).then (ref)=>
+            @article = @$firebaseObject(ref)
+            @$ionicModal.fromTemplateUrl 'templates/editArticle.html', 
+                scope: @$scope,
+                animation: 'slide-in-up'
+            .then (modal) =>
+                @modal = modal
+                @modal.show()
+
+    uploadImage: (input)=>
+        return if not input.files.length
+        file = input.files[0]
+        @Article.uploadImage(@article, file).then (data)=>
+            @article.imageUrl = data.Location
 
     closeModal: ->
         if @modal
-            @article.imageUrl = 'http://lorempixum.com/120/120/fashion'
-            @articles.$add(@article)
+            @article.$save()
             @modal.hide()
             @article = null
 
@@ -93,13 +100,29 @@ angular.module('starter.controllers', ['starter.services'])
         @articles.$remove article
 
 .controller 'ArticleCtrl', class
-    @$inject = ['$scope', '$firebaseObject', '$stateParams', 'FIREBASE_URL', '$ionicModal']
-    constructor: (@$scope, $firebaseObject, @$stateParams, @FIREBASE_URL, @$ionicModal)->
+    @$inject = ['$scope', '$firebaseObject', '$stateParams', 'FIREBASE_URL', '$ionicModal', '$cordovaCapture', 'AWSService', 'ArticleService']
+    constructor: (@$scope, $firebaseObject, @$stateParams, @FIREBASE_URL, @$ionicModal, @$cordovaCapture, @AWSService, @Article)->
         @$scope.$watch('user', (user)=>
             if user
                 @article = $firebaseObject(new Firebase(@FIREBASE_URL).child("articles/#{@$scope.user.uid}/#{@$stateParams.articleId}"))
                 @article.$bindTo @$scope, 'article'
         )
+        # @AWSService.s3().then (s3)=>
+        #     @S3 = s3
+
+    getImage: ->
+        options = 
+            limit: 3
+        @$cordovaCapture.captureImage(options).then (imageData) =>
+            console.log 'Success! Image data is here', imageData
+        , (err) =>
+            console.log 'Error with image', err
+
+    uploadImage: (input)=>
+        return if not input.files.length
+        file = input.files[0]
+        @Article.uploadImage(@article, file).then (data)=>
+            @$scope.article.imageUrl = data.Location
 
     editArticle: ->
         @$ionicModal.fromTemplateUrl 'templates/editArticle.html', 

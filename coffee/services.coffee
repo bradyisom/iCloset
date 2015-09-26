@@ -24,6 +24,7 @@ angular.module('starter.services', ['firebase'])
 .service 'AWSService', ['$q', '$cacheFactory', 'LocalStorage', class AWSService
     constructor: (@$q, @$$cacheFactory, @LocalStorage)->
         @dynamoCache = @$$cacheFactory('dynamo')
+        @s3Cache = @$$cacheFactory('s3')
 
     getCredentials: ->
         defer = @$q.defer()
@@ -51,6 +52,12 @@ angular.module('starter.services', ['firebase'])
                 @dynamoCache.put(JSON.stringify(params), table)
             d.resolve(table)
         d.promise
+
+    s3: (params)->
+        params or= {}
+        params.Bucket or= 'icloset.bradyisom.com'
+        new AWS.S3(params:params)
+
 ]
 .service 'UserService', ['$rootScope', '$q', '$http', 'AWSService', class UserService
     constructor: (@$rootScope, @$q, @$http, @AWSService)->
@@ -117,7 +124,7 @@ class Authentication
             @$rootScope.authData = authData
 
             if authData
-                console.log 'Firebase credentials', authData
+                # console.log 'Firebase credentials', authData
 
                 @createUser(authData)
 
@@ -129,12 +136,14 @@ class Authentication
 
     init: (poolId)->
         AWS.config.region = 'us-east-1'
+        # AWS.config.logger = console
         @poolId = poolId
 
-        AWS.config.credentials = new AWS.CognitoIdentityCredentials(
-            AccountId: '135172764304'
-            IdentityPoolId: @poolId
-        )
+        # console.log 'INIT'
+        # AWS.config.credentials = new AWS.CognitoIdentityCredentials(
+        #     AccountId: '135172764304'
+        #     IdentityPoolId: @poolId
+        # )
 
         existingId = @LocalStorage.get('identityId')
         if(existingId)
@@ -143,7 +152,7 @@ class Authentication
     createUser: (authData)->
         user = @$firebaseObject(@firebaseRef.child("users/#{authData.uid}"))
         user.$loaded().then =>
-            console.log 'user', user
+            # console.log 'user', user
             if not user.uid
                 user.uid = authData.uid
                 user.provider = authData.provider
@@ -161,15 +170,19 @@ class Authentication
 
         @$http.post('https://u8x98h3ig6.execute-api.us-east-1.amazonaws.com/prod/FirebaseCognitoToken', 
             'token': authResult.token
-        ).success (data, status, headers, config) ->
-            console.log('data result', data)
+        ).success (data, status, headers, config) =>
+            # console.log('data result', data)
             if(!data.failure)
                 params =
                     RoleArn: 'arn:aws:iam::135172764304:role/Cognito_iClosetAuth_Role',
                     WebIdentityToken: data.Token
-                AWS.config.credentials = new AWS.WebIdentityCredentials(params, (err) ->
-                    console.log(err, err.stack);
-                );
+                    # ProviderId: 'login.firebase.com'
+                AWS.config.credentials = new AWS.WebIdentityCredentials(params)
+
+                AWS.config.credentials.refresh((err)=>
+                    @$rootScope.user.$awsId = AWS.config.credentials.data.SubjectFromWebIdentityToken
+                    # console.log 'after refresh', err, @$rootScope.user.$awsId
+                )
                 defer.resolve();
             else
                 defer.reject();
@@ -186,4 +199,24 @@ class Authentication
             @userRef = null
         @Auth.$unauth()
 
+]
+.service 'ArticleService', ['$rootScope', '$q', 'AWSService', class ArticleService
+    constructor: (@$rootScope, @$q, @AWSService)->
+
+    uploadImage: (article, file)=>
+        params = 
+            Key: "#{@$rootScope.user.$awsId}/articles/#{article.$id}/#{file.name}"
+            ContentType: file.type
+            Body: file
+        defer = @$q.defer()
+        # console.log 'uploadImage', params, AWS.config.credentials
+        @AWSService.s3().upload(params, (err, data) =>
+            if err
+                console.log 'ERROR uploading file', err
+                defer.reject(err)
+            else
+                # console.log 'UPLOADED', data
+                defer.resolve(data)
+        )
+        defer.promise
 ]

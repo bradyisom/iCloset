@@ -9,7 +9,20 @@
         <input type="text" ng-model="ctrl.article.title">
       </label>
       <label class="item item-input item-stacked-label">
-        <span class="input-label">Description</span>
+        <span class="input-label">Image</span>
+        <div class="row icon-row">
+          <div class="col">
+            <img ng-src="{{ctrl.article.imageUrl}}" style="width:100%">
+          </div>
+          <div class="col">
+            <!--           <button class="button"
+              ng-click="ctrl.getImage()">Get Image</button> -->
+            <input type="file" onchange="angular.element(this).scope().ctrl.uploadImage(this)">
+          </div>
+        </div>
+      </label>
+      <label class="item item-input item-stacked-label">
+        <span class="input-label">Description (255 characters)</span>
         <textarea rows="8" cols="10" 
           ng-model="ctrl.article.description">
         </textarea>

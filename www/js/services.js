@@ -1,5 +1,6 @@
 (function() {
-  var AWSService, Authentication, LocalStorage, UserService;
+  var AWSService, ArticleService, Authentication, LocalStorage, UserService,
+    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   angular.module('starter.services', ['firebase']).service('LocalStorage', LocalStorage = (function() {
     function LocalStorage() {
@@ -42,6 +43,7 @@
         this.$$cacheFactory = $$cacheFactory;
         this.LocalStorage = LocalStorage1;
         this.dynamoCache = this.$$cacheFactory('dynamo');
+        this.s3Cache = this.$$cacheFactory('s3');
       }
 
       AWSService.prototype.getCredentials = function() {
@@ -78,6 +80,14 @@
           };
         })(this));
         return d.promise;
+      };
+
+      AWSService.prototype.s3 = function(params) {
+        params || (params = {});
+        params.Bucket || (params.Bucket = 'icloset.bradyisom.com');
+        return new AWS.S3({
+          params: params
+        });
       };
 
       return AWSService;
@@ -179,7 +189,6 @@
           return function(authData) {
             _this.$rootScope.authData = authData;
             if (authData) {
-              console.log('Firebase credentials', authData);
               _this.createUser(authData);
               return _this.socialSignIn(authData).then(function() {
                 return _this.$rootScope.$broadcast('login');
@@ -195,10 +204,6 @@
         var existingId;
         AWS.config.region = 'us-east-1';
         this.poolId = poolId;
-        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-          AccountId: '135172764304',
-          IdentityPoolId: this.poolId
-        });
         existingId = this.LocalStorage.get('identityId');
         if (existingId) {
           return AWS.config.credentials.identityId = existingId;
@@ -210,7 +215,6 @@
         user = this.$firebaseObject(this.firebaseRef.child("users/" + authData.uid));
         user.$loaded().then((function(_this) {
           return function() {
-            console.log('user', user);
             if (!user.uid) {
               user.uid = authData.uid;
               user.provider = authData.provider;
@@ -233,22 +237,24 @@
         defer = this.$q.defer();
         this.$http.post('https://u8x98h3ig6.execute-api.us-east-1.amazonaws.com/prod/FirebaseCognitoToken', {
           'token': authResult.token
-        }).success(function(data, status, headers, config) {
-          var params;
-          console.log('data result', data);
-          if (!data.failure) {
-            params = {
-              RoleArn: 'arn:aws:iam::135172764304:role/Cognito_iClosetAuth_Role',
-              WebIdentityToken: data.Token
-            };
-            AWS.config.credentials = new AWS.WebIdentityCredentials(params, function(err) {
-              return console.log(err, err.stack);
-            });
-            return defer.resolve();
-          } else {
-            return defer.reject();
-          }
-        })["catch"](function(err) {
+        }).success((function(_this) {
+          return function(data, status, headers, config) {
+            var params;
+            if (!data.failure) {
+              params = {
+                RoleArn: 'arn:aws:iam::135172764304:role/Cognito_iClosetAuth_Role',
+                WebIdentityToken: data.Token
+              };
+              AWS.config.credentials = new AWS.WebIdentityCredentials(params);
+              AWS.config.credentials.refresh(function(err) {
+                return _this.$rootScope.user.$awsId = AWS.config.credentials.data.SubjectFromWebIdentityToken;
+              });
+              return defer.resolve();
+            } else {
+              return defer.reject();
+            }
+          };
+        })(this))["catch"](function(err) {
           console.log('lambda error', err);
           return defer.reject();
         });
@@ -265,6 +271,39 @@
       };
 
       return Authentication;
+
+    })()
+  ]).service('ArticleService', [
+    '$rootScope', '$q', 'AWSService', ArticleService = (function() {
+      function ArticleService($rootScope, $q, AWSService1) {
+        this.$rootScope = $rootScope;
+        this.$q = $q;
+        this.AWSService = AWSService1;
+        this.uploadImage = bind(this.uploadImage, this);
+      }
+
+      ArticleService.prototype.uploadImage = function(article, file) {
+        var defer, params;
+        params = {
+          Key: this.$rootScope.user.$awsId + "/articles/" + article.$id + "/" + file.name,
+          ContentType: file.type,
+          Body: file
+        };
+        defer = this.$q.defer();
+        this.AWSService.s3().upload(params, (function(_this) {
+          return function(err, data) {
+            if (err) {
+              console.log('ERROR uploading file', err);
+              return defer.reject(err);
+            } else {
+              return defer.resolve(data);
+            }
+          };
+        })(this));
+        return defer.promise;
+      };
+
+      return ArticleService;
 
     })()
   ]);
